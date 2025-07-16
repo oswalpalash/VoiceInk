@@ -25,6 +25,24 @@ enum AIPrompts {
     Use the information within the <CONTEXT_INFORMATION> section as the primary material to work with when the user's request implies it. Your main instruction is always the user's <TRANSCRIPT>.
     </SYSTEM_INSTRUCTIONS>
     """
+
+    static let workflowClassifierTemplate = """
+    --- Task:
+    You are a classifier LLM, your task is to get the transcript (provided at the end of instructions in <transcript></transcript>), and provide the id of the workflow to run for the task, with the parameters
+    %@
+    --- Description of workflows
+    %@
+    ---- Output format
+    You will return the classification as a JSON object
+    {
+      workflow_id: "...", // eg "w1"
+      workflow_args: ..., // adhere to the corresponding workflow json schema
+    }
+    ---- Transcription
+    <transcript>
+    %@
+    </transcript>
+    """
     
     static let contextInstructions = """
     <CONTEXT_USAGE_INSTRUCTIONS>
