@@ -16,6 +16,7 @@ struct VoiceInkApp: App {
     @StateObject private var aiService = AIService()
     @StateObject private var enhancementService: AIEnhancementService
     @StateObject private var activeWindowService = ActiveWindowService.shared
+    @StateObject private var workflowManager = WorkflowManager.shared
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     
     // Audio cleanup manager for automatic deletion of old audio files
@@ -92,6 +93,7 @@ struct VoiceInkApp: App {
                     .environmentObject(menuBarManager)
                     .environmentObject(aiService)
                     .environmentObject(enhancementService)
+                    .environmentObject(workflowManager)
                     .modelContainer(container)
                     .onAppear {
                         updaterViewModel.silentlyCheckForUpdates()
@@ -114,6 +116,7 @@ struct VoiceInkApp: App {
                     .environmentObject(whisperState)
                     .environmentObject(aiService)
                     .environmentObject(enhancementService)
+                    .environmentObject(workflowManager)
                     .frame(minWidth: 880, minHeight: 780)
                     .background(WindowAccessor { window in
                         // Ensure this is called only once or is idempotent
@@ -137,6 +140,7 @@ struct VoiceInkApp: App {
                 .environmentObject(updaterViewModel)
                 .environmentObject(aiService)
                 .environmentObject(enhancementService)
+                .environmentObject(workflowManager)
         } label: {
             let image: NSImage = {
                 let ratio = $0.size.height / $0.size.width

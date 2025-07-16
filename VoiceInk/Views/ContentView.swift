@@ -10,6 +10,7 @@ enum ViewType: String, CaseIterable {
     case models = "AI Models"
     case enhancement = "Enhancement"
     case powerMode = "Power Mode"
+    case workflows = "Workflows"
     case permissions = "Permissions"
     case audioInput = "Audio Input"
     case dictionary = "Dictionary"
@@ -24,6 +25,7 @@ enum ViewType: String, CaseIterable {
         case .models: return "brain.head.profile"
         case .enhancement: return "wand.and.stars"
         case .powerMode: return "sparkles.square.fill.on.square"
+        case .workflows: return "arrow.triangle.branch"
         case .permissions: return "shield.fill"
         case .audioInput: return "mic.fill"
         case .dictionary: return "character.book.closed.fill"
@@ -159,9 +161,11 @@ struct ContentView: View {
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var whisperState: WhisperState
     @EnvironmentObject private var hotkeyManager: HotkeyManager
+    @EnvironmentObject private var workflowManager: WorkflowManager
     @State private var selectedView: ViewType = .metrics
     @State private var hoveredView: ViewType?
     @State private var hasLoadedData = false
+    @State private var showWorkflowErrorAlert = false
     let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
     @StateObject private var licenseViewModel = LicenseViewModel()
     
@@ -215,6 +219,9 @@ struct ContentView: View {
                 case "Enhancement":
                     print("ContentView: Navigating to Enhancement")
                     selectedView = .enhancement
+                case "Workflows":
+                    print("ContentView: Navigating to Workflows")
+                    selectedView = .workflows
                 default:
                     print("ContentView: No matching destination found for: \(destination)")
                     break
@@ -222,6 +229,20 @@ struct ContentView: View {
             } else {
                 print("ContentView: No destination in notification")
             }
+        }
+        .alert("Workflow Error", isPresented: $showWorkflowErrorAlert) {
+            Button("OK", role: .cancel) {
+                workflowManager.errorMessage = nil
+            }
+        } message: {
+            if let errorMessage = workflowManager.errorMessage {
+                Text(errorMessage)
+            } else {
+                Text("An unknown error occurred with the workflow.")
+            }
+        }
+        .onChange(of: workflowManager.errorMessage) { newValue in
+            showWorkflowErrorAlert = newValue != nil && selectedView != .workflows
         }
     }
     
@@ -249,6 +270,9 @@ struct ContentView: View {
             DictionarySettingsView(whisperPrompt: whisperState.whisperPrompt)
         case .powerMode:
             PowerModeView()
+        case .workflows:
+            WorkflowsView()
+                .environmentObject(workflowManager)
         case .settings:
             SettingsView()
                 .environmentObject(whisperState)
