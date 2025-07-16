@@ -5,6 +5,7 @@ import AppKit
 enum EnhancementPrompt {
     case transcriptionEnhancement
     case aiAssistant
+    case workflowClassifier
 }
 
 class AIEnhancementService: ObservableObject {
@@ -119,7 +120,7 @@ class AIEnhancementService: ObservableObject {
         lastRequestTime = Date()
     }
     
-    private func getSystemMessage(for mode: EnhancementPrompt) -> String {
+    private func getSystemMessage(for mode: EnhancementPrompt, text: String = "") -> String {
         let selectedText = SelectedTextService.fetchSelectedText()
         
         if let activePrompt = activePrompt,
@@ -156,9 +157,30 @@ class AIEnhancementService: ObservableObject {
         guard let activePrompt = activePrompt else {
             return AIPrompts.assistantMode + contextSection
         }
-        
+
         if activePrompt.id == PredefinedPrompts.assistantPromptId {
             return activePrompt.promptText + contextSection
+        }
+
+        if mode == .workflowClassifier {
+            let systemPrompt = clipboardContext + screenCaptureContext
+            let additionalInfo = systemPrompt.isEmpty ? "" : "--- Additional user-provided infos:\n\(systemPrompt)"
+            var workflowDescriptions = ""
+            for (index, workflow) in WorkflowManager.shared.workflows.enumerated() {
+                workflowDescriptions += """
+                - id: w\(index + 1)
+                - description:
+                \(workflow.name)
+                \(workflow.prompt)
+                - expected output:
+                \(workflow.jsonOutput)
+
+                """
+            }
+            return String(format: AIPrompts.workflowClassifierTemplate,
+                          additionalInfo,
+                          workflowDescriptions,
+                          text)
         }
         
         var systemMessage = String(format: AIPrompts.customPromptTemplate, activePrompt.promptText)
@@ -176,12 +198,15 @@ class AIEnhancementService: ObservableObject {
         }
         
         let formattedText = "\n<TRANSCRIPT>\n\(text)\n</TRANSCRIPT>"
-        let systemMessage = getSystemMessage(for: mode)
+        let systemMessage = getSystemMessage(for: mode, text: text)
         
         if aiService.selectedProvider == .ollama {
             do {
                 let result = try await aiService.enhanceWithOllama(text: formattedText, systemPrompt: systemMessage)
                 let filteredResult = AIEnhancementOutputFilter.filter(result)
+                if mode == .workflowClassifier {
+                    WorkflowManager.shared.executeWorkflow(fromResponse: filteredResult)
+                }
                 return filteredResult
             } catch let error as LocalAIError {
                 switch error {
@@ -253,6 +278,9 @@ class AIEnhancementService: ObservableObject {
                     }
                     
                     let filteredText = AIEnhancementOutputFilter.filter(enhancedText.trimmingCharacters(in: .whitespacesAndNewlines))
+                    if mode == .workflowClassifier {
+                        WorkflowManager.shared.executeWorkflow(fromResponse: filteredText)
+                    }
                     return filteredText
                     
                 case 401:
@@ -309,6 +337,9 @@ class AIEnhancementService: ObservableObject {
                     }
                     
                     let filteredText = AIEnhancementOutputFilter.filter(enhancedText.trimmingCharacters(in: .whitespacesAndNewlines))
+                    if mode == .workflowClassifier {
+                        WorkflowManager.shared.executeWorkflow(fromResponse: filteredText)
+                    }
                     return filteredText
                     
                 case 401:
@@ -372,6 +403,9 @@ class AIEnhancementService: ObservableObject {
                     }
                     
                     let filteredText = AIEnhancementOutputFilter.filter(enhancedText.trimmingCharacters(in: .whitespacesAndNewlines))
+                    if mode == .workflowClassifier {
+                        WorkflowManager.shared.executeWorkflow(fromResponse: filteredText)
+                    }
                     return filteredText
                     
                 case 401:
@@ -396,9 +430,17 @@ class AIEnhancementService: ObservableObject {
         }
     }
     
+    private func determineMode(text: String) -> EnhancementPrompt {
+        if let activePrompt = activePrompt,
+           activePrompt.id == PredefinedPrompts.workflowPromptId {
+            return .workflowClassifier
+        }
+        return .transcriptionEnhancement
+    }
+
     func enhance(_ text: String) async throws -> (String, TimeInterval) {
         let startTime = Date()
-        let enhancementPrompt: EnhancementPrompt = .transcriptionEnhancement
+        let enhancementPrompt = determineMode(text: text)
         
         var retryCount = 0
         while retryCount < maxRetries {

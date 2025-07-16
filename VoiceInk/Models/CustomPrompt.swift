@@ -35,6 +35,10 @@ enum PromptIcon: String, Codable, CaseIterable {
     case musicFill = "music.note"
     case photoFill = "photo.fill"
     case brushFill = "paintbrush.fill"
+
+    // Workflow icons
+    case workflowFill = "arrow.triangle.branch"
+    case automationFill = "wand.and.stars"
     
     var title: String {
         switch self {
@@ -71,6 +75,10 @@ enum PromptIcon: String, Codable, CaseIterable {
         case .musicFill: return "Music"
         case .photoFill: return "Photo"
         case .brushFill: return "Design"
+
+        // Workflow icons
+        case .workflowFill: return "Workflow"
+        case .automationFill: return "Automation"
         }
     }
 }
@@ -103,6 +111,28 @@ struct CustomPrompt: Identifiable, Codable, Equatable {
         self.description = description
         self.isPredefined = isPredefined
         self.triggerWords = triggerWords
+    }
+}
+
+struct Workflow: Identifiable, Codable, Equatable {
+    let id: UUID
+    var name: String
+    var prompt: String
+    var jsonOutput: String
+    var shellScriptPath: String
+
+    init(
+        id: UUID = UUID(),
+        name: String = "",
+        prompt: String = "",
+        jsonOutput: String = "{}",
+        shellScriptPath: String = ""
+    ) {
+        self.id = id
+        self.name = name
+        self.prompt = prompt
+        self.jsonOutput = jsonOutput
+        self.shellScriptPath = shellScriptPath
     }
 }
 
